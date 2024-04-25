@@ -1,7 +1,7 @@
 'use strict'
 
 const testUtils = require('./testUtils')
-const { AttribNode, ElementNode } = require('../src/transpiler')
+const { AttribNode, ElementNode } = require('../src/parser')
 const { convertXML, createAST } = require('../src/xmlToJson')
 const astToJson = require('../src/converters/astToJson')
 
