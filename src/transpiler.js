@@ -1,37 +1,34 @@
 'use strict'
 
-const { TOKEN_TYPE } = require('./constants')
+const { NODE_TYPE, TOKEN_TYPE } = require('./constants')
 const { createLexer } = require('./lexer')
-const { Token } = require('./model')
-// AST Node types
-const [ROOT, ELEMENT, ATTRIBUTE, CONTENT] = [
-    'ROOT',
-    'ELEMENT',
-    'ATTRIBUTE',
-    'CONTENT'
-]
 
-const Node = (type, value) => ({
-    type,
-    value
+const AttribNode = ($name, $value) => ({
+    type: NODE_TYPE.ATTRIBUTE,
+    value: {
+        name: $name,
+        value: $value
+    }
 })
 
-const ContentNode = (value) => Node(CONTENT, value)
+const ContentNode = ($value) => ({
+    type: NODE_TYPE.CONTENT,
+    value: $value
+})
 
-const ElementNode = (type, attributes, children) => {
-    return Node(ELEMENT, {
-        type,
-        attributes,
-        children
-    })
-}
+const ElementNode = ($type, $attributes, $children) => ({
+    type: NODE_TYPE.ELEMENT,
+    value: {
+        type: $type,
+        attributes: $attributes,
+        children: $children
+    }
+})
 
-const AttribNode = (name, value) => {
-    return Node(ATTRIBUTE, {
-        name,
-        value
-    })
-}
+const Node = ($type, $value) => ({
+    type: $type,
+    value: $value
+})
 
 const parseXML = (lexer) => {
     /*
@@ -48,117 +45,93 @@ const parseXML = (lexer) => {
     | AttributeName: String
     | AttributeValue: String
     */
-    const rootNode = Node(ROOT, {
-        children: parseExpr(lexer, Token(ROOT, 'ROOT'))
-    })
-    return rootNode
-}
+    const rootNode = Node(/*inline*/ NODE_TYPE.ROOT, { children: [] })
+    const scopingNode = [rootNode]
 
-const parseExpr = (lexer, scopingElement) => {
-    const children = []
     while (lexer.hasNext()) {
-        const lexem = lexer.next()
-        switch (lexem.type) {
+        const tok = lexer.next()
+        const { value: nodeValue } = scopingNode[scopingNode.length - 1]
+        switch (tok.type) {
             case TOKEN_TYPE.OPEN_BRACKET: {
-                const elementLexem = lexer.next()
-                const [elementAttributes, currentToken] =
-                    parseElementAttributes(lexer)
-                let elementChildren = []
-                if (currentToken.type !== TOKEN_TYPE.CLOSE_ELEMENT) {
-                    elementChildren = parseExpr(lexer, elementLexem)
-                }
-                if (
-                    elementChildren &&
-                    elementChildren.length > 0 &&
-                    elementChildren[0].type === TOKEN_TYPE.CONTENT
+                const { value: tagName } = lexer.next()
+                const attribs = []
+                let currTok = lexer.next()
+                while (
+                    currTok &&
+                    currTok.type !== TOKEN_TYPE.CLOSE_BRACKET &&
+                    currTok.type !== TOKEN_TYPE.CLOSE_ELEMENT &&
+                    lexer.hasNext()
                 ) {
-                    elementChildren = reduceChildrenElements(elementChildren)
-                }
-                children.push(
-                    ElementNode(
-                        elementLexem.value,
-                        elementAttributes,
-                        elementChildren
+                    const attribNameTok = currTok
+                    lexer.next() // assignment token
+                    const attribValueTok = lexer.next()
+                    attribs.push(
+                        AttribNode(
+                            /*inline*/ attribNameTok.value,
+                            attribValueTok.value
+                        )
                     )
-                )
+                    currTok = lexer.next()
+                }
+                const childNode = ElementNode(/*inline*/ tagName, attribs, [])
+                nodeValue.children.push(childNode)
+                if (currTok.type !== TOKEN_TYPE.CLOSE_ELEMENT) {
+                    scopingNode.push(childNode)
+                }
                 break
             }
             case TOKEN_TYPE.CLOSE_ELEMENT: {
-                if (lexem.value === scopingElement.value) return children
+                if (tok.value === nodeValue.type) {
+                    scopingNode.pop()
+                    const { children } = nodeValue
+                    const { length: childrenLength } = children
+                    if (
+                        childrenLength > 0 &&
+                        children[0].type === NODE_TYPE.CONTENT
+                    ) {
+                        let buffer = ''
+                        const reduced = []
+                        for (let i = 0; i < childrenLength; i += 1) {
+                            const child = children[i]
+                            if (child.type === NODE_TYPE.CONTENT) {
+                                buffer = buffer + child.value
+                            } else {
+                                if (buffer.length) {
+                                    reduced.push(ContentNode(/*inline*/ buffer))
+                                    buffer = ''
+                                }
+                                reduced.push(child)
+                            }
+                        }
+                        if (buffer.length) {
+                            reduced.push(ContentNode(/*inline*/ buffer))
+                        }
+                        nodeValue.children = reduced
+                    }
+                }
                 break
             }
             case TOKEN_TYPE.CONTENT: {
-                children.push(ContentNode(lexem.value))
+                nodeValue.children.push(ContentNode(/*inline*/ tok.value))
                 break
             }
             case TOKEN_TYPE.EOF: {
-                return children
+                return rootNode
             }
             default: {
                 throw new Error(
-                    `Unknown Lexem type: ${lexem.type} "${lexem.value}, scoping element: ${scopingElement.value}"`
+                    `Unknown Lexem type: ${tok.type} "${tok.value}, scoping element: ${nodeValue.type}"`
                 )
             }
         }
     }
-    return children
-}
-
-const parseElementAttributes = (lexer) => {
-    const attribs = []
-    let currentToken = lexer.peek()
-    if (
-        !lexer.hasNext() ||
-        (currentToken && currentToken.type === TOKEN_TYPE.CLOSE_BRACKET) ||
-        (currentToken && currentToken.type === TOKEN_TYPE.CLOSE_ELEMENT)
-    ) {
-        return [attribs, currentToken]
-    }
-    currentToken = lexer.next()
-    while (
-        lexer.hasNext() &&
-        currentToken &&
-        currentToken.type !== TOKEN_TYPE.CLOSE_BRACKET &&
-        currentToken.type !== TOKEN_TYPE.CLOSE_ELEMENT
-    ) {
-        const attribName = currentToken
-        lexer.next() //assignment token
-        const attribValue = lexer.next()
-        const attributeNode = AttribNode(attribName.value, attribValue.value)
-        attribs.push(attributeNode)
-        currentToken = lexer.next()
-    }
-    return [attribs, currentToken]
-}
-
-function reduceChildrenElements(elementChildren) {
-    let reduced = [],
-        buffer = ''
-
-    elementChildren.forEach((child) => {
-        if (child.type === TOKEN_TYPE.CONTENT) {
-            buffer += child.value
-        } else {
-            if (buffer.length) {
-                reduced.push(ContentNode(buffer))
-                buffer = ''
-            }
-            reduced.push(child)
-        }
-    })
-
-    if (buffer.length) reduced.push(ContentNode(buffer))
-
-    return reduced
+    return rootNode
 }
 
 function transpile(xmlAsString, astConverter) {
     const lexer = createLexer(xmlAsString)
     const ast = parseXML(lexer, xmlAsString)
-    if (astConverter) {
-        return astConverter.convert(ast)
-    }
-    return ast
+    return astConverter ? astConverter.convert(ast) : ast
 }
 
 module.exports = {
