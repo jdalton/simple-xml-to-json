@@ -11,6 +11,7 @@ function createLexer(xmlAsString) {
     let currentToken = null
     let pos = 0
 
+    const getPos = () => pos
     const peek = () => xmlAsString.charCodeAt(pos)
     const hasNextPos = () => pos < length
     const hasNextToken = () => currentToken !== EOF_TOKEN && pos < length
@@ -385,6 +386,7 @@ function createLexer(xmlAsString) {
         hasNextToken,
         next,
         peek,
+        pos: getPos,
         // prettier-ignore
         ...(BUILD.COMPTIME
             ? {

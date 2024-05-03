@@ -16,12 +16,13 @@ const ContentNode = ($value) => ({
     value: $value
 })
 
-const ElementNode = ($type, $attributes, $children) => ({
+const ElementNode = ($type, $attributes, $children, $loc) => ({
     type: NODE_TYPE.ELEMENT,
     value: {
         type: $type,
         attributes: $attributes,
-        children: $children
+        children: $children,
+        loc: $loc
     }
 })
 
@@ -47,7 +48,8 @@ const createAST = (xmlAsString) => {
     */
     const lexer = createLexer(xmlAsString)
     const rootNode = Node(/*inline*/ NODE_TYPE.ROOT, {
-        children: []
+        children: [],
+        loc: { start: 0, end: xmlAsString.length }
     })
     const scopingNode = [rootNode]
 
@@ -56,6 +58,7 @@ const createAST = (xmlAsString) => {
         const { value: nodeValue } = scopingNode[scopingNode.length - 1]
         switch (tok.type) {
             case TOKEN_TYPE.OPEN_BRACKET: {
+                const start = lexer.pos() - 1
                 const { value: tagName } = lexer.next()
                 const attribs = []
                 let currTok = lexer.next()
@@ -82,7 +85,14 @@ const createAST = (xmlAsString) => {
                 const isSelfClosing =
                     currType === TOKEN_TYPE.CLOSE_ELEMENT ||
                     currType === TOKEN_TYPE.EOF
-                const childNode = ElementNode(/*inline*/ tagName, attribs, [])
+                const end = isSelfClosing ? lexer.pos() : start
+                const loc = { start, end }
+                const childNode = ElementNode(
+                    /*inline*/ tagName,
+                    attribs,
+                    [],
+                    loc
+                )
                 nodeValue.children.push(childNode)
                 if (!isSelfClosing) {
                     scopingNode.push(childNode)
@@ -92,6 +102,7 @@ const createAST = (xmlAsString) => {
             case TOKEN_TYPE.CLOSE_ELEMENT: {
                 if (tok.value === nodeValue.type) {
                     scopingNode.pop()
+                    nodeValue.loc.end = lexer.pos()
                     const { children } = nodeValue
                     const { length: childrenLength } = children
                     const firstChild =
