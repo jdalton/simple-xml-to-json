@@ -1,9 +1,8 @@
 'use strict'
 
 const testUtils = require('./testUtils')
-const { AttribNode, ElementNode } = require('../src/transpiler')
+const { AttribNode, ElementNode } = require('../src/parser')
 const { convertXML, createAST } = require('../src/xmlToJson')
-const astToJson = require('../src/converters/astToJson')
 
 const XML_HEADER = '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>'
 
@@ -299,10 +298,12 @@ describe('transpiler', () => {
                             value: {
                                 type: 'a',
                                 attributes: [],
-                                children: []
+                                children: [],
+                                loc: { start: 0, end: 7 }
                             }
                         }
-                    ]
+                    ],
+                    loc: { start: 0, end: 7 }
                 }
             })
         })
@@ -324,10 +325,12 @@ describe('transpiler', () => {
                                         type: 'CONTENT',
                                         value: 'Hello content'
                                     }
-                                ]
+                                ],
+                                loc: { start: 0, end: 20 }
                             }
                         }
-                    ]
+                    ],
+                    loc: { start: 0, end: 20 }
                 }
             })
         })
@@ -347,10 +350,12 @@ describe('transpiler', () => {
                             value: {
                                 type: 'a',
                                 attributes: [],
-                                children: []
+                                children: [],
+                                loc: { start: 81, end: 88 }
                             }
                         }
-                    ]
+                    ],
+                    loc: { start: 0, end: 101 }
                 }
             })
         })
@@ -370,10 +375,12 @@ describe('transpiler', () => {
                                     AttribNode('p1', 'v1'),
                                     AttribNode('p2', 'v2')
                                 ],
-                                children: []
+                                children: [],
+                                loc: { start: 0, end: 23 }
                             }
                         }
-                    ]
+                    ],
+                    loc: { start: 0, end: 23 }
                 }
             })
         })
@@ -405,12 +412,14 @@ describe('transpiler', () => {
                                     ElementNode(
                                         'b',
                                         [AttribNode('bp1', 'bv1')],
-                                        []
+                                        [],
+                                        { start: 49, end: 66 }
                                     ),
                                     ElementNode(
                                         'b',
                                         [AttribNode('bp2', 'bv2')],
-                                        []
+                                        [],
+                                        { start: 79, end: 96 }
                                     ),
                                     ElementNode(
                                         'b',
@@ -427,15 +436,22 @@ describe('transpiler', () => {
                                                         ),
                                                         AttribNode('cp2', 'cv2')
                                                     ],
-                                                    children: []
+                                                    children: [],
+                                                    loc: {
+                                                        start: 135,
+                                                        end: 162
+                                                    }
                                                 }
                                             }
-                                        ]
+                                        ],
+                                        { start: 109, end: 179 }
                                     )
-                                ]
+                                ],
+                                loc: { start: 13, end: 196 }
                             }
                         }
-                    ]
+                    ],
+                    loc: { start: 0, end: 209 }
                 }
             })
         })
@@ -448,7 +464,7 @@ describe('transpiler', () => {
                 const expectedJSON = {
                     a: {}
                 }
-                const actualJSON = convertXML(mockXML, astToJson)
+                const actualJSON = convertXML(mockXML)
                 expect(actualJSON).toEqual(expectedJSON)
             })
 
@@ -460,7 +476,7 @@ describe('transpiler', () => {
                 const expectedJSON = {
                     a: {}
                 }
-                const actualJSON = convertXML(mockXML, astToJson)
+                const actualJSON = convertXML(mockXML)
                 expect(actualJSON).toEqual(expectedJSON)
             })
         })
@@ -477,7 +493,7 @@ describe('transpiler', () => {
                         b: 'hello'
                     }
                 }
-                const actualJSON = convertXML(mockXML, astToJson)
+                const actualJSON = convertXML(mockXML)
                 expect(actualJSON).toEqual(expectedJSON)
             })
         })
@@ -530,7 +546,7 @@ describe('transpiler', () => {
                         ]
                     }
                 }
-                const actualJSON = convertXML(mockXML, astToJson)
+                const actualJSON = convertXML(mockXML)
                 expect(actualJSON).toEqual(expectedJSON)
             })
         })
@@ -547,7 +563,7 @@ describe('transpiler', () => {
                             content: 'content'
                         }
                     }
-                    const actualJSON = convertXML(mockXML, astToJson)
+                    const actualJSON = convertXML(mockXML)
                     expect(actualJSON).toEqual(expectedJSON)
                 })
             })
@@ -561,7 +577,7 @@ describe('transpiler', () => {
                             content: 'https://www.acme.com/abc/A-B_C,d+E/'
                         }
                     }
-                    const actualJSON = convertXML(mockXML, astToJson)
+                    const actualJSON = convertXML(mockXML)
                     expect(actualJSON).toEqual(expectedJSON)
                 })
 
@@ -572,7 +588,7 @@ describe('transpiler', () => {
                             content: 'á'
                         }
                     }
-                    const actualJSON = convertXML(mockXML, astToJson)
+                    const actualJSON = convertXML(mockXML)
                     expect(actualJSON).toEqual(expectedJSON)
                 })
 
@@ -642,7 +658,7 @@ describe('transpiler', () => {
                             ]
                         }
                     }
-                    const actualJSON = convertXML(mockXML, astToJson)
+                    const actualJSON = convertXML(mockXML)
                     expect(actualJSON).toEqual(expectedJSON)
                 })
             })
@@ -652,7 +668,7 @@ describe('transpiler', () => {
                     const mockXML = testUtils.readXMLFile(
                         __dirname + '/mock-with-tabs.xml'
                     )
-                    const actualJSON = convertXML(mockXML, astToJson)
+                    const actualJSON = convertXML(mockXML)
                     const expectedJSON = {
                         'testng-results': {
                             ignored: '20',
