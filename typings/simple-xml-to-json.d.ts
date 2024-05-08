@@ -1,4 +1,4 @@
-declare module 'simple-xml-to-json' {
+declare module '@jdalton/simple-xml-to-json' {
   interface ASTConverter {
     convert: (ast: object) => any;
   }

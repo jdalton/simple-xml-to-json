@@ -25,7 +25,7 @@ const myAst = createAST(myXMLString)
 ````
 
 ---
-### ![TS](https://raw.githubusercontent.com/jdalton/assets/master/simple-xml-to-json/ts_icon_32.png) Typescript compatible
+### Typescript compatible
 ---
 
 ## Notes and how to use code
@@ -43,11 +43,9 @@ const myAst = createAST(myXMLString)
 
 ## Benchmark
 
-_Take these results with a grain of salt._\
-According to a __simple__ benchmark test I performed in __April 2024__ with a random XML. _YMMV_.
-![Benchmark Chart](https://github.com/jdalton/assets/blob/master/simple-xml-to-json/simple-xml-to-json-benchmark-2.png?raw=true)
+_Take these results with a grain of salt._
 
-* The chart results __may be__ outdated. [Run the test yourself](https://runkit.com/nirgit/6620cf27943a41000847221d)
+* [Run the test yourself](https://runkit.com/jdalton/663b68115820c90008371980)
 
 ## Current Drawbacks
 
