@@ -1,6 +1,6 @@
 'use strict'
 
-const Token = ($type, $value) => ({
+const Token = ($type, $value = '') => ({
     type: $type,
     value: $value
 })

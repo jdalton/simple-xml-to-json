@@ -1,6 +1,7 @@
 'use strict'
 
 const testUtils = require('./testUtils')
+const { NODE_TYPE } = require('../src/constants')
 const { AttribNode, ElementNode } = require('../src/parser')
 const { convertXML, createAST } = require('../src/xmlToJson')
 
@@ -290,11 +291,11 @@ describe('transpiler', () => {
             const mockXML = '<a></a>'
             const ast = createAST(mockXML)
             expect(ast).toEqual({
-                type: 'ROOT',
+                type: NODE_TYPE.ROOT,
                 value: {
                     children: [
                         {
-                            type: 'ELEMENT',
+                            type: NODE_TYPE.ELEMENT,
                             value: {
                                 type: 'a',
                                 attributes: [],
@@ -312,17 +313,17 @@ describe('transpiler', () => {
             const mockXML = '<a>Hello content</a>'
             const ast = createAST(mockXML)
             expect(ast).toEqual({
-                type: 'ROOT',
+                type: NODE_TYPE.ROOT,
                 value: {
                     children: [
                         {
-                            type: 'ELEMENT',
+                            type: NODE_TYPE.ELEMENT,
                             value: {
                                 type: 'a',
                                 attributes: [],
                                 children: [
                                     {
-                                        type: 'CONTENT',
+                                        type: NODE_TYPE.CONTENT,
                                         value: 'Hello content'
                                     }
                                 ],
@@ -342,11 +343,11 @@ describe('transpiler', () => {
             `
             const ast = createAST(mockXML)
             expect(ast).toEqual({
-                type: 'ROOT',
+                type: NODE_TYPE.ROOT,
                 value: {
                     children: [
                         {
-                            type: 'ELEMENT',
+                            type: NODE_TYPE.ELEMENT,
                             value: {
                                 type: 'a',
                                 attributes: [],
@@ -364,11 +365,11 @@ describe('transpiler', () => {
             const mockXML = '<a p1="v1" p2="v2"></a>'
             const ast = createAST(mockXML)
             expect(ast).toEqual({
-                type: 'ROOT',
+                type: NODE_TYPE.ROOT,
                 value: {
                     children: [
                         {
-                            type: 'ELEMENT',
+                            type: NODE_TYPE.ELEMENT,
                             value: {
                                 type: 'a',
                                 attributes: [
@@ -397,11 +398,11 @@ describe('transpiler', () => {
             `
             const ast = createAST(mockXML)
             expect(ast).toEqual({
-                type: 'ROOT',
+                type: NODE_TYPE.ROOT,
                 value: {
                     children: [
                         {
-                            type: 'ELEMENT',
+                            type: NODE_TYPE.ELEMENT,
                             value: {
                                 type: 'a',
                                 attributes: [
@@ -426,7 +427,7 @@ describe('transpiler', () => {
                                         [AttribNode('bp3', 'bv3')],
                                         [
                                             {
-                                                type: 'ELEMENT',
+                                                type: NODE_TYPE.ELEMENT,
                                                 value: {
                                                     type: 'c',
                                                     attributes: [

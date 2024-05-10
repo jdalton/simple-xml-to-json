@@ -3,7 +3,7 @@
 const { BIT, BUILD, CHAR_CODE, TOKEN_TYPE } = require('./constants')
 const { Token } = require('./model')
 
-const EOF_TOKEN = Token(/*inline*/ TOKEN_TYPE.EOF)
+const EOF_TOKEN = Token(/*inline*/ TOKEN_TYPE.EOF, '')
 
 function createLexer(xmlAsString) {
     const { length } = xmlAsString
@@ -36,7 +36,16 @@ function createLexer(xmlAsString) {
     const isQuote = ($code) =>
         $code === CHAR_CODE.DOUBLE_QUOTE || $code === CHAR_CODE.SINGLE_QUOTE
 
-    const replaceQuotes = (str) => str.replaceAll("'", '"')
+    const replaceQuotes = ($str) => {
+        let output = ''
+        let fromIndex = 0
+        let index = 0
+        while ((index = $str.indexOf("'", fromIndex)) !== -1) {
+            output = output + $str.slice(fromIndex, index) + '"'
+            fromIndex = index + 1
+        }
+        return fromIndex ? output + $str.slice(fromIndex) : $str
+    }
 
     const skipQuotes = () => {
         if (hasNextPos(/*inline*/)) {
@@ -192,7 +201,7 @@ function createLexer(xmlAsString) {
             break
         }
         const str = xmlAsString.slice(start, pos)
-        return replaceQuotes(/*inline*/ str)
+        return replaceQuotes(str)
     }
 
     const readAlphaNumericAndSpecialChars = () => {
@@ -211,7 +220,7 @@ function createLexer(xmlAsString) {
             break
         }
         const str = xmlAsString.slice(start, pos)
-        return replaceQuotes(/*inline*/ str)
+        return replaceQuotes(str)
     }
 
     const next = () => {
@@ -245,14 +254,17 @@ function createLexer(xmlAsString) {
                     pos += 1
                 }
                 const str = xmlAsString.slice(start, pos)
-                const buffer = replaceQuotes(/*inline*/ str)
+                const buffer = replaceQuotes(str)
                 pos += 1
                 currentToken = Token(/*inline*/ TOKEN_TYPE.ATTRIB_VALUE, buffer)
             } else {
                 skipSpaces(/*inline*/)
                 switch (readBracketsAsBitmask()) {
                     case BIT.OPEN_BRACKET: {
-                        currentToken = Token(/*inline*/ TOKEN_TYPE.OPEN_BRACKET)
+                        currentToken = Token(
+                            /*inline*/ TOKEN_TYPE.OPEN_BRACKET,
+                            ''
+                        )
                         break
                     }
                     case BIT.OPEN_BRACKET_SLASH: {
@@ -270,7 +282,8 @@ function createLexer(xmlAsString) {
                     }
                     case BIT.CLOSE_BRACKET: {
                         currentToken = Token(
-                            /*inline*/ TOKEN_TYPE.CLOSE_BRACKET
+                            /*inline*/ TOKEN_TYPE.CLOSE_BRACKET,
+                            ''
                         )
                         break
                     }
@@ -284,7 +297,10 @@ function createLexer(xmlAsString) {
                     }
                     case BIT.EQUAL_SIGN: {
                         if (currentToken.type === TOKEN_TYPE.ATTRIB_NAME) {
-                            currentToken = Token(/*inline*/ TOKEN_TYPE.ASSIGN)
+                            currentToken = Token(
+                                /*inline*/ TOKEN_TYPE.ASSIGN,
+                                ''
+                            )
                         } else {
                             currentToken = Token(
                                 /*inline*/ TOKEN_TYPE.CONTENT,
@@ -395,7 +411,6 @@ function createLexer(xmlAsString) {
                 isBlank,
                 isElementBegin,
                 isQuote,
-                replaceQuotes,
                 skipQuotes,
                 skipSpaces,
                 skipXMLDocumentHeader
