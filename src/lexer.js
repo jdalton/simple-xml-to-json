@@ -3,7 +3,7 @@
 const { BIT, BUILD, CHAR_CODE, TOKEN_TYPE } = require('./constants')
 const { Token } = require('./model')
 
-const EOF_TOKEN = Token(TOKEN_TYPE.EOF)
+const EOF_TOKEN = Token(/*inline*/ TOKEN_TYPE.EOF)
 
 function createLexer(xmlAsString) {
     const { length } = xmlAsString
@@ -13,17 +13,11 @@ function createLexer(xmlAsString) {
 
     const getPos = () => pos
     const peek = () => xmlAsString.charCodeAt(pos)
-    const hasNext = () => currentToken !== EOF_TOKEN && pos < length
+    const hasNextPos = () => pos < length
+    const hasNextToken = () => currentToken !== EOF_TOKEN && pos < length
 
     const initializePosForLexer = () => {
-        while (pos < length) {
-            const code = peek(/*inline*/)
-            if (isBlank(/*inline*/ code)) {
-                pos += 1
-                continue
-            }
-            break
-        }
+        skipSpaces(/*inline*/)
         skipXMLDocumentHeader(/*inline*/)
     }
 
@@ -45,7 +39,7 @@ function createLexer(xmlAsString) {
     const replaceQuotes = (str) => str.replaceAll("'", '"')
 
     const skipQuotes = () => {
-        if (hasNext(/*inline*/)) {
+        if (hasNextPos(/*inline*/)) {
             const code = peek(/*inline*/)
             if (isQuote(/*inline*/ code)) {
                 pos += 1
@@ -54,7 +48,7 @@ function createLexer(xmlAsString) {
     }
 
     const skipSpaces = () => {
-        while (hasNext(/*inline*/)) {
+        while (hasNextPos(/*inline*/)) {
             const code = peek(/*inline*/)
             if (isBlank(/*inline*/ code)) {
                 pos += 1
@@ -73,7 +67,7 @@ function createLexer(xmlAsString) {
             xmlAsString.charCodeAt(pos + 3) === CHAR_CODE.LOWER_M &&
             xmlAsString.charCodeAt(pos + 4) === CHAR_CODE.LOWER_L
         ) {
-            while (pos < length) {
+            while (hasNextPos(/*inline*/)) {
                 if (peek(/*inline*/) !== CHAR_CODE.QUESTION_MARK) {
                     pos += 1
                 } else if (
@@ -90,19 +84,19 @@ function createLexer(xmlAsString) {
     }
 
     const readBracketsAsBitmask = () => {
-        if (hasNext(/*inline*/)) {
+        if (hasNextPos(/*inline*/)) {
             const code = peek(/*inline*/)
             if (code === CHAR_CODE.OPEN_BRACKET) {
                 pos += 1
                 if (
-                    hasNext(/*inline*/) &&
+                    hasNextPos(/*inline*/) &&
                     peek(/*inline*/) === CHAR_CODE.FORWARD_SLASH
                 ) {
                     pos += 1
                     return BIT.OPEN_BRACKET_SLASH
                 }
                 if (
-                    hasNext(/*inline*/) &&
+                    hasNextPos(/*inline*/) &&
                     peek(/*inline*/) === CHAR_CODE.EXCLAMATION_POINT &&
                     xmlAsString.charCodeAt(pos + 1) === CHAR_CODE.HYPHEN &&
                     xmlAsString.charCodeAt(pos + 2) === CHAR_CODE.HYPHEN
@@ -116,7 +110,7 @@ function createLexer(xmlAsString) {
             if (code === CHAR_CODE.FORWARD_SLASH) {
                 pos += 1
                 if (
-                    hasNext(/*inline*/) &&
+                    hasNextPos(/*inline*/) &&
                     peek(/*inline*/) === CHAR_CODE.CLOSE_BRACKET
                 ) {
                     pos += 1
@@ -135,19 +129,19 @@ function createLexer(xmlAsString) {
     }
 
     const readAlphaNumericCharsAndBrackets = () => {
-        if (hasNext(/*inline*/)) {
+        if (hasNextPos(/*inline*/)) {
             const code = peek(/*inline*/)
             if (code === CHAR_CODE.OPEN_BRACKET) {
                 pos += 1
                 if (
-                    hasNext(/*inline*/) &&
+                    hasNextPos(/*inline*/) &&
                     peek(/*inline*/) === CHAR_CODE.FORWARD_SLASH
                 ) {
                     pos += 1
                     return '</'
                 }
                 if (
-                    hasNext(/*inline*/) &&
+                    hasNextPos(/*inline*/) &&
                     peek(/*inline*/) === CHAR_CODE.EXCLAMATION_POINT &&
                     xmlAsString.charCodeAt(pos + 1) === CHAR_CODE.HYPHEN &&
                     xmlAsString.charCodeAt(pos + 2) === CHAR_CODE.HYPHEN
@@ -161,7 +155,7 @@ function createLexer(xmlAsString) {
             if (code === CHAR_CODE.FORWARD_SLASH) {
                 pos += 1
                 if (
-                    hasNext(/*inline*/) &&
+                    hasNextPos(/*inline*/) &&
                     peek(/*inline*/) === CHAR_CODE.CLOSE_BRACKET
                 ) {
                     pos += 1
@@ -181,7 +175,7 @@ function createLexer(xmlAsString) {
 
     const readAlphaNumericChars = () => {
         let start = pos
-        while (hasNext(/*inline*/)) {
+        while (hasNextPos(/*inline*/)) {
             const code = peek(/*inline*/)
             // inline /[a-zA-Z0-9_:-]/.test(xmlAsString[pos])
             if (
@@ -203,7 +197,7 @@ function createLexer(xmlAsString) {
 
     const readAlphaNumericAndSpecialChars = () => {
         let start = pos
-        while (hasNext(/*inline*/)) {
+        while (hasNextPos(/*inline*/)) {
             const code = peek(/*inline*/)
             // inline /[^>=<]/u.test(xmlAsString[pos])
             if (
@@ -227,19 +221,23 @@ function createLexer(xmlAsString) {
             const prevPos = pos
             skipSpaces(/*inline*/)
             const numOfSpacesSkipped = pos - prevPos
-            if (!(hasNext(/*inline*/))) {
+            if (!(hasNextPos(/*inline*/))) {
                 currentToken = EOF_TOKEN
+                return currentToken
             } else if (isElementBegin(/*inline*/)) {
                 // starting new element
                 skipSpaces(/*inline*/)
                 const tagName = readAlphaNumericCharsAndBrackets()
-                currentToken = Token(TOKEN_TYPE.ELEMENT_TYPE, tagName)
+                currentToken = Token(
+                    /*inline*/ TOKEN_TYPE.ELEMENT_TYPE,
+                    tagName
+                )
                 scopingTagName.push(tagName)
             } else if (isAssignToAttribute(/*inline*/)) {
                 // assign value to attribute
                 skipQuotes(/*inline*/)
                 let start = pos
-                while (hasNext(/*inline*/)) {
+                while (hasNextPos(/*inline*/)) {
                     const code = peek(/*inline*/)
                     if (isQuote(/*inline*/ code)) {
                         break
@@ -249,12 +247,12 @@ function createLexer(xmlAsString) {
                 const str = xmlAsString.slice(start, pos)
                 const buffer = replaceQuotes(/*inline*/ str)
                 pos += 1
-                currentToken = Token(TOKEN_TYPE.ATTRIB_VALUE, buffer)
+                currentToken = Token(/*inline*/ TOKEN_TYPE.ATTRIB_VALUE, buffer)
             } else {
                 skipSpaces(/*inline*/)
                 switch (readBracketsAsBitmask()) {
                     case BIT.OPEN_BRACKET: {
-                        currentToken = Token(TOKEN_TYPE.OPEN_BRACKET)
+                        currentToken = Token(/*inline*/ TOKEN_TYPE.OPEN_BRACKET)
                         break
                     }
                     case BIT.OPEN_BRACKET_SLASH: {
@@ -262,6 +260,7 @@ function createLexer(xmlAsString) {
                         while (peek(/*inline*/) !== CHAR_CODE.CLOSE_BRACKET)
                             pos += 1
                         currentToken = Token(
+                            /*inline*/
                             TOKEN_TYPE.CLOSE_ELEMENT,
                             xmlAsString.slice(start, pos)
                         )
@@ -270,11 +269,14 @@ function createLexer(xmlAsString) {
                         break
                     }
                     case BIT.CLOSE_BRACKET: {
-                        currentToken = Token(TOKEN_TYPE.CLOSE_BRACKET)
+                        currentToken = Token(
+                            /*inline*/ TOKEN_TYPE.CLOSE_BRACKET
+                        )
                         break
                     }
                     case BIT.SLASH_CLOSE_BRACKET: {
                         currentToken = Token(
+                            /*inline*/
                             TOKEN_TYPE.CLOSE_ELEMENT,
                             scopingTagName.pop()
                         )
@@ -282,9 +284,12 @@ function createLexer(xmlAsString) {
                     }
                     case BIT.EQUAL_SIGN: {
                         if (currentToken.type === TOKEN_TYPE.ATTRIB_NAME) {
-                            currentToken = Token(TOKEN_TYPE.ASSIGN)
+                            currentToken = Token(/*inline*/ TOKEN_TYPE.ASSIGN)
                         } else {
-                            currentToken = Token(TOKEN_TYPE.CONTENT, '=')
+                            currentToken = Token(
+                                /*inline*/ TOKEN_TYPE.CONTENT,
+                                '='
+                            )
                         }
                         break
                     }
@@ -296,7 +301,7 @@ function createLexer(xmlAsString) {
                             CHAR_CODE.HYPHEN
                         ]
                         while (
-                            hasNext(/*inline*/) &&
+                            hasNextPos(/*inline*/) &&
                             (closingBuff[2] !== CHAR_CODE.CLOSE_BRACKET ||
                                 closingBuff[1] !== CHAR_CODE.HYPHEN ||
                                 closingBuff[0] !== CHAR_CODE.HYPHEN)
@@ -319,12 +324,14 @@ function createLexer(xmlAsString) {
                                     peek(/*inline*/) !== CHAR_CODE.OPEN_BRACKET
                                 ) {
                                     currentToken = Token(
+                                        /*inline*/
                                         TOKEN_TYPE.CONTENT,
                                         buffer +
                                             readAlphaNumericAndSpecialChars()
                                     )
                                 } else {
                                     currentToken = Token(
+                                        /*inline*/
                                         TOKEN_TYPE.CONTENT,
                                         buffer
                                     )
@@ -339,18 +346,21 @@ function createLexer(xmlAsString) {
                                 ) {
                                     // we're assuming this is content, part of unstructured data
                                     currentToken = Token(
+                                        /*inline*/
                                         TOKEN_TYPE.CONTENT,
                                         ' '.repeat(numOfSpacesSkipped) + buffer
                                     )
                                 } else {
                                     // it should be an attribute name token
                                     currentToken = Token(
+                                        /*inline*/
                                         TOKEN_TYPE.ATTRIB_NAME,
                                         buffer
                                     )
                                 }
                             } else {
                                 currentToken = Token(
+                                    /*inline*/
                                     TOKEN_TYPE.CONTENT,
                                     ' '.repeat(numOfSpacesSkipped) + buffer // spaces included as content
                                 )
@@ -372,7 +382,8 @@ function createLexer(xmlAsString) {
     initializePosForLexer(/*inline*/)
 
     return {
-        hasNext,
+        hasNextPos,
+        hasNextToken,
         next,
         peek,
         pos: getPos,

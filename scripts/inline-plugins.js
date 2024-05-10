@@ -7,6 +7,7 @@ const walk = require('acorn-walk')
 
 const candidates = {
     ...require('../src/lexer').createLexer(''),
+    ...require('../src/model'),
     ...require('../src/parser')
 }
 const constants = require('../src/constants')
@@ -21,7 +22,7 @@ const createAssertNonParamId = (info, paramLookup) => {
         if (paramLookup.has(name)) {
             const { lineStart, lineEnd } = getLineInfo(body, start)
             throw new Error(
-                `Param conflict for ${name} in ${funcName}:\n${body.slice(
+                `Problem inlining '${name}' in ${funcName}:\n${body.slice(
                     lineStart,
                     lineEnd
                 )}\n${' '.repeat(start - lineStart)}^`
@@ -173,7 +174,7 @@ const inlinableCallExpressionReplacer = (match, funcName, args) => {
         return match
     }
     const magicString = new MagicString(info.body)
-    const paramToArg = new Map(info.params.map((p, i) => [p, args[i]]))
+    const paramToArg = new Map(info.params.map((p, i) => [p, `${args[i]}`]))
     walk.recursive(
         info.ast.body,
         {

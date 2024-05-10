@@ -53,12 +53,12 @@ module.exports = {
     TOKEN_TYPE: {
         OPEN_BRACKET: 1,
         ELEMENT_TYPE: 2,
-        CLOSE_ELEMENT: 3,
-        ATTRIB_NAME: 4,
-        ATTRIB_VALUE: 5,
-        ASSIGN: 6,
+        ATTRIB_NAME: 3,
+        ATTRIB_VALUE: 4,
+        ASSIGN: 5,
+        CONTENT: 6,
         CLOSE_BRACKET: 7,
-        CONTENT: 8,
+        CLOSE_ELEMENT: 8,
         EOF: 9
     }
 }

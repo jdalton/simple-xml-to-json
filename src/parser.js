@@ -53,7 +53,7 @@ const createAST = (xmlAsString) => {
     })
     const scopingNode = [rootNode]
 
-    while (lexer.hasNext()) {
+    while (lexer.hasNextToken()) {
         const tok = lexer.next()
         const { value: nodeValue } = scopingNode[scopingNode.length - 1]
         switch (tok.type) {
@@ -62,11 +62,12 @@ const createAST = (xmlAsString) => {
                 const { value: tagName } = lexer.next()
                 const attribs = []
                 let currTok = lexer.next()
+                let currType = currTok.type
                 while (
-                    currTok &&
-                    currTok.type !== TOKEN_TYPE.CLOSE_BRACKET &&
-                    currTok.type !== TOKEN_TYPE.CLOSE_ELEMENT &&
-                    lexer.hasNext()
+                    currType !== TOKEN_TYPE.CLOSE_BRACKET &&
+                    currType !== TOKEN_TYPE.CLOSE_ELEMENT &&
+                    currType !== TOKEN_TYPE.EOF &&
+                    lexer.hasNextToken()
                 ) {
                     const attribNameTok = currTok
                     lexer.next() // assignment token
@@ -78,16 +79,17 @@ const createAST = (xmlAsString) => {
                         )
                     )
                     currTok = lexer.next()
+                    currType = currTok.type
                 }
-                const isSelfClosing = currTok.type === TOKEN_TYPE.CLOSE_ELEMENT
+                currType = currTok.type
+                const isSelfClosing =
+                    currType === TOKEN_TYPE.CLOSE_ELEMENT ||
+                    currType === TOKEN_TYPE.EOF
                 const end = isSelfClosing ? lexer.pos() : start
-                const loc = { start, end }
-                const childNode = ElementNode(
-                    /*inline*/ tagName,
-                    attribs,
-                    [],
-                    loc
-                )
+                const childNode = ElementNode(/*inline*/ tagName, attribs, [], {
+                    start,
+                    end
+                })
                 nodeValue.children.push(childNode)
                 if (!isSelfClosing) {
                     scopingNode.push(childNode)
@@ -100,13 +102,12 @@ const createAST = (xmlAsString) => {
                     nodeValue.loc.end = lexer.pos()
                     const { children } = nodeValue
                     const { length: childrenLength } = children
-                    if (
-                        childrenLength > 0 &&
-                        children[0].type === NODE_TYPE.CONTENT
-                    ) {
-                        let buffer = ''
+                    const firstChild =
+                        childrenLength > 0 ? children[0] : undefined
+                    if (firstChild && firstChild.type === NODE_TYPE.CONTENT) {
+                        let buffer = firstChild.value
                         const reduced = []
-                        for (let i = 0; i < childrenLength; i += 1) {
+                        for (let i = 1; i < childrenLength; i += 1) {
                             const child = children[i]
                             if (child.type === NODE_TYPE.CONTENT) {
                                 buffer = buffer + child.value
