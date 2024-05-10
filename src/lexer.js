@@ -179,10 +179,6 @@ function createLexer(xmlAsString) {
                 return '>'
             }
         }
-        return readAlphaNumericChars()
-    }
-
-    const readAlphaNumericChars = () => {
         let start = pos
         while (hasNextPos(/*inline*/)) {
             const code = peek(/*inline*/)
