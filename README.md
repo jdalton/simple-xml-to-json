@@ -45,7 +45,7 @@ const myAst = createAST(myXMLString)
 
 _Take these results with a grain of salt._
 
-* [Run the test yourself](https://runkit.com/jdalton/663b68115820c90008371980)
+* [Run the test yourself](https://www.val.town/v/jdalton/simpleXmlToJson?v=10)
 
 ## Current Drawbacks
 
