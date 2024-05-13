@@ -69,6 +69,23 @@ describe('Lexer', () => {
         expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.EOF))
     })
 
+    it('should skip unknown attributes', () => {
+        const tokenizer = lexer.createLexer("<a p1='v1' p2='v2' p3='v3'></a>", {
+            knownAttrib: (n) => n === 'p1' || n === 'p3'
+        })
+        expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.OPEN_BRACKET))
+        expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.ELEMENT_TYPE, 'a'))
+        expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.ATTRIB_NAME, 'p1'))
+        expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.ASSIGN))
+        expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.ATTRIB_VALUE, 'v1'))
+        expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.ATTRIB_NAME, 'p3'))
+        expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.ASSIGN))
+        expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.ATTRIB_VALUE, 'v3'))
+        expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.CLOSE_BRACKET))
+        expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.CLOSE_ELEMENT, 'a'))
+        expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.EOF))
+    })
+
     it('should support textual content for elements', () => {
         const tokenizer = lexer.createLexer('<a>Hello world</a>')
         expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.OPEN_BRACKET))
@@ -86,6 +103,26 @@ describe('Lexer', () => {
             <a><b></b></a>
         `
         const tokenizer = lexer.createLexer(mockXML)
+        expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.OPEN_BRACKET))
+        expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.ELEMENT_TYPE, 'a'))
+        expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.CLOSE_BRACKET))
+
+        expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.OPEN_BRACKET))
+        expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.ELEMENT_TYPE, 'b'))
+        expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.CLOSE_BRACKET))
+
+        expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.CLOSE_ELEMENT, 'b'))
+        expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.CLOSE_ELEMENT, 'a'))
+        expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.EOF))
+    })
+
+    it('should skip unknown elements', () => {
+        const mockXML = `
+            <a><b></b><c><d>D</d><e><f>F</f>E</e>C</c></a>
+        `
+        const tokenizer = lexer.createLexer(mockXML, {
+            knownElement: (n) => n === 'a' || n === 'b'
+        })
         expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.OPEN_BRACKET))
         expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.ELEMENT_TYPE, 'a'))
         expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.CLOSE_BRACKET))

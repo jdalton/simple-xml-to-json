@@ -53,10 +53,12 @@ const createAST = (xmlAsString) => {
     })
     const scopingNode = [rootNode]
 
-    while (lexer.hasNextToken()) {
+    while (lexer.hasNext()) {
         const tok = lexer.next()
+        const tokScope = lexer.scope()
+        const { type: tokType } = tok
         const { value: nodeValue } = scopingNode[scopingNode.length - 1]
-        switch (tok.type) {
+        switch (tokType) {
             case TOKEN_TYPE.OPEN_BRACKET: {
                 const start = lexer.pos() - 1
                 const { value: tagName } = lexer.next()
@@ -67,7 +69,7 @@ const createAST = (xmlAsString) => {
                     currType !== TOKEN_TYPE.CLOSE_BRACKET &&
                     currType !== TOKEN_TYPE.CLOSE_ELEMENT &&
                     currType !== TOKEN_TYPE.EOF &&
-                    lexer.hasNextToken()
+                    lexer.hasNext()
                 ) {
                     const attribNameTok = currTok
                     lexer.next() // assignment token
@@ -81,7 +83,6 @@ const createAST = (xmlAsString) => {
                     currTok = lexer.next()
                     currType = currTok.type
                 }
-                currType = currTok.type
                 const isSelfClosing =
                     currType === TOKEN_TYPE.CLOSE_ELEMENT ||
                     currType === TOKEN_TYPE.EOF
@@ -97,7 +98,7 @@ const createAST = (xmlAsString) => {
                 break
             }
             case TOKEN_TYPE.CLOSE_ELEMENT: {
-                if (tok.value === nodeValue.type) {
+                if (tokScope === lexer.scope()) {
                     scopingNode.pop()
                     nodeValue.loc.end = lexer.pos()
                     const { children } = nodeValue
@@ -136,7 +137,7 @@ const createAST = (xmlAsString) => {
             }
             default: {
                 throw new Error(
-                    `Unknown Lexem type: ${tok.type} "${tok.value}, scoping element: ${nodeValue.type}"`
+                    `Unknown Lexem type: ${tokType} "${tok.value}, scoping element: ${nodeValue.type}"`
                 )
             }
         }
