@@ -2,12 +2,13 @@
 
 const { createAST } = require('./parser')
 
-function convertXML(
-    xmlAsString,
-    converter = require('./converters/astToJson')
-) {
-    const ast = createAST(xmlAsString)
-    return converter ? converter.convert(ast) : ast
+function convertXML(xmlAsString, options = {}) {
+    const ast = createAST(xmlAsString, {
+        knownAttrib: options.knownAttrib,
+        knownElement: options.knownElement
+    })
+    const converter = options.converter ?? require('./converters/astToJson')
+    return converter.convert(ast)
 }
 
 module.exports = {

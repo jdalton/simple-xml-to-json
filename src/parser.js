@@ -31,7 +31,7 @@ const Node = ($type, $value) => ({
     value: $value
 })
 
-const createAST = (xmlAsString) => {
+const createAST = (xmlAsString, options = {}) => {
     /*
     How does the grammar look?
     | expr: StructuredXML | UnstructuredXML | Content
@@ -46,13 +46,15 @@ const createAST = (xmlAsString) => {
     | AttributeName: String
     | AttributeValue: String
     */
-    const lexer = createLexer(xmlAsString)
+    const lexer = createLexer(xmlAsString, {
+        knownAttrib: options.knownAttrib,
+        knownElement: options.knownElement
+    })
     const rootNode = Node(/*inline*/ NODE_TYPE.ROOT, {
         children: [],
         loc: { start: 0, end: xmlAsString.length }
     })
     const scopingNode = [rootNode]
-
     while (lexer.hasNext()) {
         const tok = lexer.next()
         const tokScope = lexer.scope()

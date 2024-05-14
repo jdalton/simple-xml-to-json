@@ -223,7 +223,6 @@ describe('issues', () => {
             const json = convertXML(
                 '<parent><child attrib1="val1" attrib2="val2" /></parent>'
             )
-
             expect(json).toEqual({
                 parent: {
                     children: [
@@ -250,7 +249,6 @@ describe('issues', () => {
   </item>
 </root>
             `)
-
             expect(json).toEqual({
                 root: {
                     children: [
@@ -389,11 +387,11 @@ describe('transpiler', () => {
         it('should convert a full XML to AST', () => {
             const mockXML = `
             <a ap1="av1" ap2="av2">
-            <b bp1='bv1'></b>
-            <b bp2='bv2'></b>
-            <b bp3='bv3'>
-            <c cp1='cv1' cp2='cv2'></c>
-            </b>
+                <b bp1='bv1'></b>
+                <b bp2='bv2'></b>
+                <b bp3='bv3'>
+                    <c cp1='cv1' cp2='cv2'></c>
+                </b>
             </a>
             `
             const ast = createAST(mockXML)
@@ -414,13 +412,13 @@ describe('transpiler', () => {
                                         'b',
                                         [AttribNode('bp1', 'bv1')],
                                         [],
-                                        { start: 49, end: 66 }
+                                        { start: 53, end: 70 }
                                     ),
                                     ElementNode(
                                         'b',
                                         [AttribNode('bp2', 'bv2')],
                                         [],
-                                        { start: 79, end: 96 }
+                                        { start: 87, end: 104 }
                                     ),
                                     ElementNode(
                                         'b',
@@ -439,20 +437,88 @@ describe('transpiler', () => {
                                                     ],
                                                     children: [],
                                                     loc: {
-                                                        start: 135,
-                                                        end: 162
+                                                        start: 155,
+                                                        end: 182
                                                     }
                                                 }
                                             }
                                         ],
-                                        { start: 109, end: 179 }
+                                        { start: 121, end: 203 }
                                     )
                                 ],
-                                loc: { start: 13, end: 196 }
+                                loc: { start: 13, end: 220 }
                             }
                         }
                     ],
-                    loc: { start: 0, end: 209 }
+                    loc: { start: 0, end: 233 }
+                }
+            })
+        })
+
+        it('should skip unknown elements', () => {
+            const mockXML = `
+            <a>
+                <b></b>
+                <c>
+                    <d>D</d>
+                    <e>
+                        <f>F</f>
+                        E
+                    </e>
+                    C
+                </c>
+            </a>
+            `
+            const ast = createAST(mockXML, {
+                knownElement: (n) => n === 'a' || n === 'b'
+            })
+            expect(ast).toEqual({
+                type: NODE_TYPE.ROOT,
+                value: {
+                    children: [
+                        {
+                            type: NODE_TYPE.ELEMENT,
+                            value: {
+                                type: 'a',
+                                attributes: [],
+                                children: [
+                                    ElementNode('b', [], [], {
+                                        start: 33,
+                                        end: 40
+                                    })
+                                ],
+                                loc: { start: 13, end: 257 }
+                            }
+                        }
+                    ],
+                    loc: { start: 0, end: 270 }
+                }
+            })
+        })
+
+        it('should skip unknown attributes', () => {
+            const mockXML = "<a p1='v1' p2='v2' p3='v3'></a>"
+            const ast = createAST(mockXML, {
+                knownAttrib: (n) => n === 'p1' || n === 'p3'
+            })
+            expect(ast).toEqual({
+                type: NODE_TYPE.ROOT,
+                value: {
+                    children: [
+                        {
+                            type: NODE_TYPE.ELEMENT,
+                            value: {
+                                type: 'a',
+                                attributes: [
+                                    AttribNode('p1', 'v1'),
+                                    AttribNode('p3', 'v3')
+                                ],
+                                children: [],
+                                loc: { start: 0, end: 31 }
+                            }
+                        }
+                    ],
+                    loc: { start: 0, end: 31 }
                 }
             })
         })
@@ -462,11 +528,10 @@ describe('transpiler', () => {
         describe('simple XML', () => {
             it('should transform a simple XML to JSON', () => {
                 const mockXML = '<a></a>'
-                const expectedJSON = {
+                const json = convertXML(mockXML)
+                expect(json).toEqual({
                     a: {}
-                }
-                const actualJSON = convertXML(mockXML)
-                expect(actualJSON).toEqual(expectedJSON)
+                })
             })
 
             it('should transform a simple XML to JSON with an XML header', () => {
@@ -474,11 +539,10 @@ describe('transpiler', () => {
                 ${XML_HEADER}
                 <a></a>
                 `
-                const expectedJSON = {
+                const json = convertXML(mockXML)
+                expect(json).toEqual({
                     a: {}
-                }
-                const actualJSON = convertXML(mockXML)
-                expect(actualJSON).toEqual(expectedJSON)
+                })
             })
         })
 
@@ -488,14 +552,13 @@ describe('transpiler', () => {
                 ${XML_HEADER}
                 <a a="5" b="hello"></a>
                 `
-                const expectedJSON = {
+                const json = convertXML(mockXML)
+                expect(json).toEqual({
                     a: {
                         a: '5',
                         b: 'hello'
                     }
-                }
-                const actualJSON = convertXML(mockXML)
-                expect(actualJSON).toEqual(expectedJSON)
+                })
             })
         })
 
@@ -512,8 +575,8 @@ describe('transpiler', () => {
                 </nested>
                 </a>
                 `
-
-                const expectedJSON = {
+                const json = convertXML(mockXML)
+                expect(json).toEqual({
                     a: {
                         a: '5',
                         b: 'hello',
@@ -546,9 +609,7 @@ describe('transpiler', () => {
                             }
                         ]
                     }
-                }
-                const actualJSON = convertXML(mockXML)
-                expect(actualJSON).toEqual(expectedJSON)
+                })
             })
         })
 
@@ -557,15 +618,14 @@ describe('transpiler', () => {
                 it('should transform the XML to JSON when {:, -} chars are in attribute name', () => {
                     const mockXML =
                         '<a attrib:n1="v1" attrib-n2="v2">content</a>'
-                    const expectedJSON = {
+                    const json = convertXML(mockXML)
+                    expect(json).toEqual({
                         a: {
                             'attrib:n1': 'v1',
                             'attrib-n2': 'v2',
                             content: 'content'
                         }
-                    }
-                    const actualJSON = convertXML(mockXML)
-                    expect(actualJSON).toEqual(expectedJSON)
+                    })
                 })
             })
 
@@ -573,24 +633,22 @@ describe('transpiler', () => {
                 it('should transform the XML to JSON supporting chars - {:, /, -, +, "," }', () => {
                     const mockXML =
                         '<link>https://www.acme.com/abc/A-B_C,d+E/</link>'
-                    const expectedJSON = {
+                    const json = convertXML(mockXML)
+                    expect(json).toEqual({
                         link: {
                             content: 'https://www.acme.com/abc/A-B_C,d+E/'
                         }
-                    }
-                    const actualJSON = convertXML(mockXML)
-                    expect(actualJSON).toEqual(expectedJSON)
+                    })
                 })
 
                 it('should transform the XML to JSON supporting unicode chars', () => {
                     const mockXML = '<link>á</link>'
-                    const expectedJSON = {
+                    const json = convertXML(mockXML)
+                    expect(json).toEqual({
                         link: {
                             content: 'á'
                         }
-                    }
-                    const actualJSON = convertXML(mockXML)
-                    expect(actualJSON).toEqual(expectedJSON)
+                    })
                 })
 
                 it('should transform a random XML to JSON without failing', () => {
@@ -608,7 +666,8 @@ describe('transpiler', () => {
                         <R9Z28 train="please">a=b.JD&amp;m3&gt;vP.AG</R9Z28>
                     </root>
                     `
-                    const expectedJSON = {
+                    const json = convertXML(mockXML)
+                    expect(json).toEqual({
                         root: {
                             children: [
                                 {
@@ -658,9 +717,7 @@ describe('transpiler', () => {
                                 }
                             ]
                         }
-                    }
-                    const actualJSON = convertXML(mockXML)
-                    expect(actualJSON).toEqual(expectedJSON)
+                    })
                 })
             })
 
@@ -669,8 +726,8 @@ describe('transpiler', () => {
                     const mockXML = testUtils.readXMLFile(
                         __dirname + '/mock-with-tabs.xml'
                     )
-                    const actualJSON = convertXML(mockXML)
-                    const expectedJSON = {
+                    const json = convertXML(mockXML)
+                    expect(json).toEqual({
                         'testng-results': {
                             ignored: '20',
                             total: '40',
@@ -683,53 +740,97 @@ describe('transpiler', () => {
                                 }
                             ]
                         }
-                    }
-                    expect(actualJSON).toEqual(expectedJSON)
+                    })
                 })
             })
         })
 
-        it('Spaces as content', () => {
-            const json = convertXML(
-                '<a><child>hello     world</child><child>1    + 1  =  2</child></a>'
-            )
-            expect(json).toEqual({
-                a: {
-                    children: [
-                        {
-                            child: {
-                                content: 'hello     world'
+        describe('Spaces', () => {
+            it('Spaces as content', () => {
+                const json = convertXML(
+                    '<a><child>hello     world</child><child>1    + 1  =  2</child></a>'
+                )
+                expect(json).toEqual({
+                    a: {
+                        children: [
+                            {
+                                child: {
+                                    content: 'hello     world'
+                                }
+                            },
+                            {
+                                child: {
+                                    content: '1    + 1  =  2'
+                                }
                             }
-                        },
-                        {
-                            child: {
-                                content: '1    + 1  =  2'
+                        ]
+                    }
+                })
+            })
+
+            it('Spaces and Tabs as content', () => {
+                const json = convertXML(
+                    '<a><child>2 tabs        between</child><child>1tab  + 1space</child></a>'
+                )
+                expect(json).toEqual({
+                    a: {
+                        children: [
+                            {
+                                child: {
+                                    content: '2 tabs        between'
+                                }
+                            },
+                            {
+                                child: {
+                                    content: '1tab  + 1space'
+                                }
                             }
-                        }
-                    ]
-                }
+                        ]
+                    }
+                })
             })
         })
 
-        it('Spaces and Tabs as content', () => {
-            const json = convertXML(
-                '<a><child>2 tabs        between</child><child>1tab  + 1space</child></a>'
-            )
-            expect(json).toEqual({
-                a: {
-                    children: [
-                        {
-                            child: {
-                                content: '2 tabs        between'
+        describe('Options', () => {
+            it('should skip unknown elements', () => {
+                const mockXML = `
+                <a>
+                    <b></b>
+                    <c>
+                        <d>D</d>
+                        <e>
+                            <f>F</f>
+                            E
+                        </e>
+                        C
+                    </c>
+                </a>
+                `
+                const json = convertXML(mockXML, {
+                    knownElement: (n) => n === 'a' || n === 'b'
+                })
+                expect(json).toEqual({
+                    a: {
+                        children: [
+                            {
+                                b: {}
                             }
-                        },
-                        {
-                            child: {
-                                content: '1tab  + 1space'
-                            }
-                        }
-                    ]
-                }
+                        ]
+                    }
+                })
+            })
+
+            it('should skip unknown attributes', () => {
+                const mockXML = "<a p1='v1' p2='v2' p3='v3'></a>"
+                const json = convertXML(mockXML, {
+                    knownAttrib: (n) => n === 'p1' || n === 'p3'
+                })
+                expect(json).toEqual({
+                    a: {
+                        p1: 'v1',
+                        p3: 'v3'
+                    }
+                })
             })
         })
     })

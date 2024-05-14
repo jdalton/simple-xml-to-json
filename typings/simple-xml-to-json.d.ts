@@ -1,10 +1,18 @@
 declare module '@jdalton/simple-xml-to-json' {
-  export interface ASTConverter {
-    convert: (ast: object) => any;
-  }
+  export function convertXML(xmlAsString: string, options?: { 
+    converter?: (ast: XMLRootNode) => JSON_LD_Object,
+    knownAttrib?: (attrName: string) => boolean,
+    knownElement?: (tagName: string) => boolean 
+  }) : any;
 
-  export function convertXML(xmlAsString: string, customConverter?: ASTConverter): any;
-  export function createAST(xmlAsString: string): XMLRootNode;
+  export function createAST(xmlAsString: string, options?: {
+    knownAttrib?: (attrName: string) => boolean,
+    knownElement?: (tagName: string) => boolean 
+  }): JSON_LD_Object;
+
+  export type JSON_LD_Array = JSON_LD_Value[]
+  export type JSON_LD_Object = { [key: string]: JSON_LD_Value }
+  export type JSON_LD_Value = string | JSON_LD_Array | JSON_LD_Object
 
   export type XMLNode = {
     type: string
@@ -12,7 +20,6 @@ declare module '@jdalton/simple-xml-to-json' {
   }
   export type XMLChildNode = XMLElementNode | XMLContentNode
   export type XMLElementNodeLoc = { start: number; end: number }
-
   export interface XMLRootNode extends XMLNode {
     type: 'ROOT'
     value: {
