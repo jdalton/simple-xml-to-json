@@ -22,7 +22,7 @@
   ],
   "homepage": "https://github.com/jdalton/simple-xml-to-json",
   "license": "MIT",
-  "version": "1.2.7",
+  "version": "1.2.8",
   "author": "John-David <john.david.dalton@gmail.com>",
   "main": "lib/simpleXmlToJson.min.js",
   "typings": "typings/simple-xml-to-json.d.ts",
