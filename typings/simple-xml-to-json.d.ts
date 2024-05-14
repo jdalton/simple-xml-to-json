@@ -1,22 +1,26 @@
 declare module '@jdalton/simple-xml-to-json' {
-  export function convertXML(xmlAsString: string, options?: { 
-    converter?: (ast: XMLRootNode) => JSON_LD_Object,
-    knownAttrib?: (attrName: string) => boolean,
-    knownElement?: (tagName: string) => boolean 
-  }) : any;
+  export type ASTConverter = (ast: XMLRootNode) => JSON_LD_Object
+  export type LexerKnownAttrib = (attrName: string) => boolean
+  export type LexerKnownElement = (tagName: string) => boolean 
+  
+  export type ConvertASTOptions = {
+    knownAttrib?: LexerKnownAttrib,
+    knownElement?: LexerKnownElement
+  }
+  export type ConvertXMLOptions = ConvertASTOptions & {
+    converter?: ASTConverter
+  }
 
-  export function createAST(xmlAsString: string, options?: {
-    knownAttrib?: (attrName: string) => boolean,
-    knownElement?: (tagName: string) => boolean 
-  }): JSON_LD_Object;
+  export function convertXML(xmlAsString: string, options?: ConvertXMLOptions) : JSON_LD_Object;
+  export function createAST(xmlAsString: string, options?: ConvertASTOptions): JSON_LD_Object;
 
   export type JSON_LD_Array = JSON_LD_Value[]
   export type JSON_LD_Object = { [key: string]: JSON_LD_Value }
-  export type JSON_LD_Value = string | JSON_LD_Array | JSON_LD_Object
+  export type JSON_LD_Value = number | string | JSON_LD_Array | JSON_LD_Object
 
   export type XMLNode = {
     type: string
-    value: any
+    value: string | JSON_LD_Object
   }
   export type XMLChildNode = XMLElementNode | XMLContentNode
   export type XMLElementNodeLoc = { start: number; end: number }
