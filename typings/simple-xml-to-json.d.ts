@@ -1,5 +1,7 @@
 declare module '@jdalton/simple-xml-to-json' {
-  export type ASTConverter = (ast: XMLRootNode) => JSON_LD_Object | null
+  export interface ASTConverter {
+    convert: (ast: XMLRootNode) => JSON_LD_Object | null
+  }
   export type LexerKnownAttrib = (attrName: string) => boolean
   export type LexerKnownElement = (tagName: string) => boolean 
   
