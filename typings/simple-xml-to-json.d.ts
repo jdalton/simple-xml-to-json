@@ -14,7 +14,7 @@ declare module '@jdalton/simple-xml-to-json' {
   }
 
   export function convertXML(xmlAsString: string, options?: ConvertXMLOptions) : JSON_LD_Object;
-  export function createAST(xmlAsString: string, options?: ConvertASTOptions): JSON_LD_Object;
+  export function createAST(xmlAsString: string, options?: ConvertASTOptions): XMLRootNode;
 
   export type JSON_LD_Array = JSON_LD_Value[]
   export type JSON_LD_Object = { [key: string]: JSON_LD_Value }
@@ -22,7 +22,7 @@ declare module '@jdalton/simple-xml-to-json' {
 
   export type XMLNode = {
     type: string
-    value: string | JSON_LD_Object
+    value: any
   }
   export type XMLChildNode = XMLElementNode | XMLContentNode
   export type XMLElementNodeLoc = { start: number; end: number }
