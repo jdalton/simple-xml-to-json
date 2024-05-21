@@ -32,6 +32,7 @@ module.exports = {
         LOWER_Z: 122,
         NEW_LINE: 10,
         OPEN_BRACKET: 60,
+        PERIOD: 46,
         QUESTION_MARK: 63,
         SINGLE_QUOTE: 39,
         SPACE: 32,

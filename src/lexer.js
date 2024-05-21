@@ -41,19 +41,7 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
 
     const readAlphaNumericAndSpecialChars = () => {
         const start = pos
-        while (hasNext(/*inline*/)) {
-            const code = peek(/*inline*/)
-            // inline /[^>=<]/u.test(xmlAsString[pos])
-            if (
-                code !== CHAR_CODE.OPEN_BRACKET &&
-                code !== CHAR_CODE.EQUAL_SIGN &&
-                code !== CHAR_CODE.CLOSE_BRACKET
-            ) {
-                pos += 1
-                continue
-            }
-            break
-        }
+        skipAlphaNumericAndSpecialChars(/*inline*/)
         const str = xmlAsString.slice(start, pos)
         return replaceQuotes(str)
     }
@@ -105,22 +93,7 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
 
     const readTagName = () => {
         let start = pos
-        while (hasNext(/*inline*/)) {
-            const code = peek(/*inline*/)
-            // inline /[a-zA-Z0-9_:-]/.test(xmlAsString[pos])
-            if (
-                (code >= CHAR_CODE.LOWER_A && code <= CHAR_CODE.LOWER_Z) ||
-                (code >= CHAR_CODE.UPPER_A && code <= CHAR_CODE.UPPER_Z) ||
-                (code >= CHAR_CODE.DIGIT_0 && code <= CHAR_CODE.DIGIT_9) ||
-                code === CHAR_CODE.LODASH ||
-                code === CHAR_CODE.COLON ||
-                code === CHAR_CODE.HYPHEN
-            ) {
-                pos += 1
-                continue
-            }
-            break
-        }
+        skipTagName(/*inline*/)
         return xmlAsString.slice(start, pos)
     }
 
@@ -136,10 +109,9 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
     }
 
     const skipAlphaNumericAndSpecialChars = () => {
-        const start = pos
         while (hasNext(/*inline*/)) {
             const code = peek(/*inline*/)
-            // inline /[^>=<]/u.test(xmlAsString[pos])
+            // inline /[^>=<]/.test(xmlAsString[pos])
             if (
                 code !== CHAR_CODE.OPEN_BRACKET &&
                 code !== CHAR_CODE.EQUAL_SIGN &&
@@ -150,7 +122,6 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
             }
             break
         }
-        return pos > start
     }
 
     const skipQuotes = () => {
@@ -174,15 +145,28 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
     }
 
     const skipTagName = () => {
+        let isFirstChar = true
         while (hasNext(/*inline*/)) {
             const code = peek(/*inline*/)
-            // inline /[a-zA-Z0-9_:-]/.test(xmlAsString[pos])
-            if (
+            // A tag name can start with ONLY [a-zA-Z] characters.
+            if (isFirstChar) {
+                isFirstChar = false
+                if (
+                    (code >= CHAR_CODE.LOWER_A && code <= CHAR_CODE.LOWER_Z) ||
+                    (code >= CHAR_CODE.UPPER_A && code <= CHAR_CODE.UPPER_Z)
+                ) {
+                    pos += 1
+                    continue
+                }
+            }
+            // The rest of the tag name can contain [a-zA-Z0-9_:.-] characters.
+            else if (
                 (code >= CHAR_CODE.LOWER_A && code <= CHAR_CODE.LOWER_Z) ||
                 (code >= CHAR_CODE.UPPER_A && code <= CHAR_CODE.UPPER_Z) ||
                 (code >= CHAR_CODE.DIGIT_0 && code <= CHAR_CODE.DIGIT_9) ||
                 code === CHAR_CODE.LODASH ||
                 code === CHAR_CODE.COLON ||
+                code === CHAR_CODE.PERIOD ||
                 code === CHAR_CODE.HYPHEN
             ) {
                 pos += 1
@@ -529,7 +513,9 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
                         break
                     }
                     default: {
-                        if (skipAlphaNumericAndSpecialChars() === false) {
+                        const start = pos
+                        skipAlphaNumericAndSpecialChars()
+                        if (pos === start) {
                             throw new Error(
                                 `Unknown Syntax : "${xmlAsString[pos]}"`
                             )
@@ -576,8 +562,10 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
                 isBlank,
                 isElementBegin,
                 isQuote,
+                skipAlphaNumericAndSpecialChars,
                 skipQuotes,
                 skipSpaces,
+                skipTagName,
                 skipXMLDocumentHeader
             }
             : {})
