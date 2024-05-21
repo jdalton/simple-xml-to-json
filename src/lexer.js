@@ -6,20 +6,22 @@ const { Token } = require('./model')
 const EOF_TOKEN = Token(/*inline*/ TOKEN_TYPE.EOF, '')
 
 function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
-    const { length } = xmlAsString
+    const { length: xmlLength } = xmlAsString
     const scoping = []
     let currScope = 0
     let currToken = EOF_TOKEN
     let currTokenType = 0
+    let isErrored = 0
     let peekedPos = 0
     let peekedTagName = ''
     let peekedTokenType = 0
     let pos = 0
+    let erroredMessage
 
     const getPos = () => pos
     const getScope = () => currScope
     const peek = () => xmlAsString.charCodeAt(pos)
-    const hasNext = () => pos < length
+    const hasNext = () => pos < xmlLength
 
     const initializePosForLexer = () => {
         skipSpaces(/*inline*/)
@@ -34,10 +36,51 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
         $code === CHAR_CODE.CARRIAGE_RETURN ||
         $code === CHAR_CODE.TAB
 
-    const isElementBegin = () => currTokenType === TOKEN_TYPE.OPEN_BRACKET
+    const isElementBegin = () => currTokenType === TOKEN_TYPE.OPEN_ANGLE_BRACKET
 
     const isQuote = ($code) =>
         $code === CHAR_CODE.DOUBLE_QUOTE || $code === CHAR_CODE.SINGLE_QUOTE
+
+    const peekCDStart = () =>
+        pos + 7 < xmlLength &&
+        xmlAsString.charCodeAt(pos) === CHAR_CODE.EXCLAMATION_POINT &&
+        xmlAsString.charCodeAt(pos + 1) === CHAR_CODE.OPEN_SQUARE_BRACKET &&
+        xmlAsString.charCodeAt(pos + 2) === CHAR_CODE.UPPER_C &&
+        xmlAsString.charCodeAt(pos + 3) === CHAR_CODE.UPPER_D &&
+        xmlAsString.charCodeAt(pos + 4) === CHAR_CODE.UPPER_A &&
+        xmlAsString.charCodeAt(pos + 5) === CHAR_CODE.UPPER_T &&
+        xmlAsString.charCodeAt(pos + 6) === CHAR_CODE.UPPER_A &&
+        xmlAsString.charCodeAt(pos + 7) === CHAR_CODE.OPEN_SQUARE_BRACKET
+
+    const peekCDEnd = () =>
+        // prettier-ignore
+        pos < xmlLength &&
+        (
+            pos + 2 >= xmlLength ||
+            (
+                xmlAsString.charCodeAt(pos + 2) === CHAR_CODE.CLOSE_ANGLE_BRACKET &&
+                xmlAsString.charCodeAt(pos + 1) === CHAR_CODE.CLOSE_SQUARE_BRACKET &&
+                xmlAsString.charCodeAt(pos) === CHAR_CODE.CLOSE_SQUARE_BRACKET
+            )
+        )
+
+    const peekCommentStart = () =>
+        pos + 2 < xmlLength &&
+        xmlAsString.charCodeAt(pos) === CHAR_CODE.EXCLAMATION_POINT &&
+        xmlAsString.charCodeAt(pos + 1) === CHAR_CODE.HYPHEN &&
+        xmlAsString.charCodeAt(pos + 2) === CHAR_CODE.HYPHEN
+
+    const peekCommentEnd = () =>
+        // prettier-ignore
+        pos < xmlLength &&
+        (
+            pos + 2 >= xmlLength ||
+            (
+                xmlAsString.charCodeAt(pos + 2) === CHAR_CODE.CLOSE_ANGLE_BRACKET &&
+                xmlAsString.charCodeAt(pos + 1) === CHAR_CODE.HYPHEN &&
+                xmlAsString.charCodeAt(pos) === CHAR_CODE.HYPHEN
+            )
+        )
 
     const readAlphaNumericAndSpecialChars = () => {
         const start = pos
@@ -48,51 +91,64 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
 
     const readBracketsAsBitmask = () => {
         if (hasNext(/*inline*/)) {
-            const code = peek(/*inline*/)
-            if (code === CHAR_CODE.OPEN_BRACKET) {
-                pos += 1
-                if (
-                    hasNext(/*inline*/) &&
-                    peek(/*inline*/) === CHAR_CODE.FORWARD_SLASH
-                ) {
+            switch (peek(/*inline*/)) {
+                case CHAR_CODE.OPEN_ANGLE_BRACKET: {
                     pos += 1
-                    return BIT.OPEN_BRACKET_SLASH
+                    if (
+                        hasNext(/*inline*/) &&
+                        peek(/*inline*/) === CHAR_CODE.FORWARD_SLASH
+                    ) {
+                        pos += 1
+                        return BIT.OPEN_ANGLE_BRACKET_SLASH
+                    }
+                    if (peekCommentStart(/*inline*/)) {
+                        // its a comment
+                        pos += 3
+                        return BIT.COMMENT
+                    }
+                    if (peekCDStart(/*inline*/)) {
+                        // is CDATA
+                        pos += 8
+                        return BIT.CDATA
+                    }
+                    return BIT.OPEN_ANGLE_BRACKET
                 }
-                if (
-                    hasNext(/*inline*/) &&
-                    peek(/*inline*/) === CHAR_CODE.EXCLAMATION_POINT &&
-                    xmlAsString.charCodeAt(pos + 1) === CHAR_CODE.HYPHEN &&
-                    xmlAsString.charCodeAt(pos + 2) === CHAR_CODE.HYPHEN
-                ) {
-                    // its a comment
-                    pos += 3
-                    return BIT.COMMENT
-                }
-                return BIT.OPEN_BRACKET
-            }
-            if (code === CHAR_CODE.FORWARD_SLASH) {
-                pos += 1
-                if (
-                    hasNext(/*inline*/) &&
-                    peek(/*inline*/) === CHAR_CODE.CLOSE_BRACKET
-                ) {
+                case CHAR_CODE.FORWARD_SLASH: {
                     pos += 1
-                    return BIT.SLASH_CLOSE_BRACKET
+                    if (
+                        hasNext(/*inline*/) &&
+                        peek(/*inline*/) === CHAR_CODE.CLOSE_ANGLE_BRACKET
+                    ) {
+                        pos += 1
+                        return BIT.SLASH_CLOSE_ANGLE_BRACKET
+                    }
+                    return BIT.FORWARD_SLASH
                 }
-                return BIT.FORWARD_SLASH
-            } else if (code === CHAR_CODE.EQUAL_SIGN) {
-                pos += 1
-                return BIT.EQUAL_SIGN
-            } else if (code === CHAR_CODE.CLOSE_BRACKET) {
-                pos += 1
-                return BIT.CLOSE_BRACKET
+                case CHAR_CODE.EQUAL_SIGN: {
+                    pos += 1
+                    return BIT.EQUAL_SIGN
+                }
+                case CHAR_CODE.CLOSE_ANGLE_BRACKET: {
+                    pos += 1
+                    return BIT.CLOSE_ANGLE_BRACKET
+                }
             }
         }
         return 0
     }
 
+    const readCData = () => {
+        const start = pos
+        while (!(peekCDEnd(/*inline*/))) {
+            pos += 1
+        }
+        const str = xmlAsString.slice(start, pos)
+        if (pos !== xmlLength) pos += 3
+        return str
+    }
+
     const readTagName = () => {
-        let start = pos
+        const start = pos
         skipTagName(/*inline*/)
         return xmlAsString.slice(start, pos)
     }
@@ -113,15 +169,29 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
             const code = peek(/*inline*/)
             // inline /[^>=<]/.test(xmlAsString[pos])
             if (
-                code !== CHAR_CODE.OPEN_BRACKET &&
+                code !== CHAR_CODE.OPEN_ANGLE_BRACKET &&
                 code !== CHAR_CODE.EQUAL_SIGN &&
-                code !== CHAR_CODE.CLOSE_BRACKET
+                code !== CHAR_CODE.CLOSE_ANGLE_BRACKET
             ) {
                 pos += 1
                 continue
             }
             break
         }
+    }
+
+    const skipCDSect = () => {
+        while (!(peekCDEnd(/*inline*/))) {
+            pos += 1
+        }
+        if (pos !== xmlLength) pos += 3
+    }
+
+    const skipComment = () => {
+        while (!(peekCommentEnd(/*inline*/))) {
+            pos += 1
+        }
+        if (pos !== xmlLength) pos += 3
     }
 
     const skipQuotes = () => {
@@ -158,9 +228,10 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
                     pos += 1
                     continue
                 }
+                isErrored = 1
             }
             // The rest of the tag name can contain [a-zA-Z0-9_:.-] characters.
-            else if (
+            if (
                 (code >= CHAR_CODE.LOWER_A && code <= CHAR_CODE.LOWER_Z) ||
                 (code >= CHAR_CODE.UPPER_A && code <= CHAR_CODE.UPPER_Z) ||
                 (code >= CHAR_CODE.DIGIT_0 && code <= CHAR_CODE.DIGIT_9) ||
@@ -179,7 +250,7 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
     const skipXMLDocumentHeader = () => {
         // inline xmlAsString.startsWith('<?xml', pos)
         if (
-            peek(/*inline*/) === CHAR_CODE.OPEN_BRACKET &&
+            peek(/*inline*/) === CHAR_CODE.OPEN_ANGLE_BRACKET &&
             xmlAsString.charCodeAt(pos + 1) === CHAR_CODE.QUESTION_MARK &&
             xmlAsString.charCodeAt(pos + 2) === CHAR_CODE.LOWER_X &&
             xmlAsString.charCodeAt(pos + 3) === CHAR_CODE.LOWER_M &&
@@ -189,7 +260,8 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
                 if (peek(/*inline*/) !== CHAR_CODE.QUESTION_MARK) {
                     pos += 1
                 } else if (
-                    xmlAsString.charCodeAt(pos + 1) === CHAR_CODE.CLOSE_BRACKET
+                    xmlAsString.charCodeAt(pos + 1) ===
+                    CHAR_CODE.CLOSE_ANGLE_BRACKET
                 ) {
                     // skip "?>"
                     pos += 2
@@ -201,7 +273,16 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
         }
     }
 
+    const throws = (message) => {
+        isErrored = 1
+        erroredMessage = message
+        throw new Error(message)
+    }
+
     const next = () => {
+        if (isErrored) {
+            throws(/*inline*/ erroredMessage)
+        }
         let skippingScope = null
         let skippingAttrib = false
         while (true) {
@@ -265,7 +346,7 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
                 const numOfSpacesSkipped = pos - prevPos
                 skipSpaces(/*inline*/)
                 switch (readBracketsAsBitmask()) {
-                    case BIT.OPEN_BRACKET: {
+                    case BIT.OPEN_ANGLE_BRACKET: {
                         const prevPos = pos
                         // peek at tag name
                         skipSpaces(/*inline*/)
@@ -273,8 +354,15 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
                         if (!(hasNext(/*inline*/))) {
                             peekedTokenType = TOKEN_TYPE.EOF
                         } else {
-                            peekedTokenType = TOKEN_TYPE.ELEMENT_TYPE
+                            const start = pos
                             peekedTagName = readTagName()
+                            isErrored |= pos === start
+                            if (isErrored) {
+                                throws(
+                                    /*inline*/ `Invalid tag name: "${peekedTagName}"`
+                                )
+                            }
+                            peekedTokenType = TOKEN_TYPE.ELEMENT_TYPE
                             peekedPos = pos
                             if (
                                 typeof knownElement === 'function' &&
@@ -294,17 +382,19 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
                         // Restore pos after peeking so that the APIs report
                         // expected values for the current position/token.
                         pos = prevPos
-                        currTokenType = TOKEN_TYPE.OPEN_BRACKET
+                        currTokenType = TOKEN_TYPE.OPEN_ANGLE_BRACKET
                         currToken = Token(
-                            /*inline*/ TOKEN_TYPE.OPEN_BRACKET,
+                            /*inline*/ TOKEN_TYPE.OPEN_ANGLE_BRACKET,
                             ''
                         )
                         return currToken
                     }
-                    case BIT.OPEN_BRACKET_SLASH: {
+                    case BIT.OPEN_ANGLE_BRACKET_SLASH: {
                         scoping.pop()
                         const start = pos
-                        while (peek(/*inline*/) !== CHAR_CODE.CLOSE_BRACKET)
+                        while (
+                            peek(/*inline*/) !== CHAR_CODE.CLOSE_ANGLE_BRACKET
+                        )
                             pos += 1
                         currScope = scoping[scoping.length - 1]
                         currTokenType = TOKEN_TYPE.CLOSE_ELEMENT
@@ -316,15 +406,15 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
                         pos += 1 // skip the ">"
                         return currToken
                     }
-                    case BIT.CLOSE_BRACKET: {
-                        currTokenType = TOKEN_TYPE.CLOSE_BRACKET
+                    case BIT.CLOSE_ANGLE_BRACKET: {
+                        currTokenType = TOKEN_TYPE.CLOSE_ANGLE_BRACKET
                         currToken = Token(
-                            /*inline*/ TOKEN_TYPE.CLOSE_BRACKET,
+                            /*inline*/ TOKEN_TYPE.CLOSE_ANGLE_BRACKET,
                             ''
                         )
                         return currToken
                     }
-                    case BIT.SLASH_CLOSE_BRACKET: {
+                    case BIT.SLASH_CLOSE_ANGLE_BRACKET: {
                         const { tagName } = scoping.pop()
                         currScope = scoping[scoping.length - 1]
                         currTokenType = TOKEN_TYPE.CLOSE_ELEMENT
@@ -346,38 +436,32 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
                         currToken = Token(/*inline*/ TOKEN_TYPE.CONTENT, '=')
                         return currToken
                     }
+                    case BIT.CDATA: {
+                        currTokenType = TOKEN_TYPE.CONTENT
+                        currToken = Token(
+                            /*inline*/
+                            TOKEN_TYPE.CONTENT,
+                            readCData()
+                        )
+                        return currToken
+                    }
                     case BIT.COMMENT: {
-                        // skipComment contents
-                        const closingBuff = [
-                            CHAR_CODE.EXCLAMATION_POINT,
-                            CHAR_CODE.HYPHEN,
-                            CHAR_CODE.HYPHEN
-                        ]
-                        while (
-                            hasNext(/*inline*/) &&
-                            (closingBuff[2] !== CHAR_CODE.CLOSE_BRACKET ||
-                                closingBuff[1] !== CHAR_CODE.HYPHEN ||
-                                closingBuff[0] !== CHAR_CODE.HYPHEN)
-                        ) {
-                            closingBuff.shift()
-                            closingBuff.push(peek(/*inline*/))
-                            pos += 1
-                        }
+                        skipComment(/*inline*/)
                         break
                     }
                     default: {
                         const buffer = readAlphaNumericAndSpecialChars()
                         if (buffer.length === 0) {
-                            throw new Error(
-                                `Unknown Syntax : "${xmlAsString[pos]}"`
+                            throws(
+                                /*inline*/ `Unknown Syntax : "${xmlAsString[pos]}"`
                             )
                         }
                         // here we fall if we have alphanumeric string, which can be related to attributes, content or nothing
-                        if (currTokenType === TOKEN_TYPE.CLOSE_BRACKET) {
+                        if (currTokenType === TOKEN_TYPE.CLOSE_ANGLE_BRACKET) {
                             currTokenType = TOKEN_TYPE.CONTENT
                             currToken =
                                 // prettier-ignore
-                                peek(/*inline*/) === CHAR_CODE.OPEN_BRACKET
+                                peek(/*inline*/) === CHAR_CODE.OPEN_ANGLE_BRACKET
                                     ? Token(
                                         /*inline*/
                                         TOKEN_TYPE.CONTENT,
@@ -439,7 +523,14 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
                 }
                 if (isElementBegin(/*inline*/)) {
                     // starting new element
+                    const start = pos
                     skipTagName()
+                    isErrored |= pos === start
+                    if (isErrored) {
+                        throws(
+                            /*inline*/ `Invalid tag name: "${xmlAsString.slice(start, pos)}"`
+                        )
+                    }
                     currScope = { tagName: '' }
                     currTokenType = TOKEN_TYPE.ELEMENT_TYPE
                     scoping.push(currScope)
@@ -461,13 +552,15 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
                 }
                 skipSpaces(/*inline*/)
                 switch (readBracketsAsBitmask()) {
-                    case BIT.OPEN_BRACKET: {
-                        currTokenType = TOKEN_TYPE.OPEN_BRACKET
+                    case BIT.OPEN_ANGLE_BRACKET: {
+                        currTokenType = TOKEN_TYPE.OPEN_ANGLE_BRACKET
                         break
                     }
-                    case BIT.OPEN_BRACKET_SLASH: {
+                    case BIT.OPEN_ANGLE_BRACKET_SLASH: {
                         const isDoneSkipping = scoping.pop() === skippingScope
-                        while (peek(/*inline*/) !== CHAR_CODE.CLOSE_BRACKET)
+                        while (
+                            peek(/*inline*/) !== CHAR_CODE.CLOSE_ANGLE_BRACKET
+                        )
                             pos += 1
                         currScope = scoping[scoping.length - 1]
                         currTokenType = TOKEN_TYPE.CLOSE_ELEMENT
@@ -475,11 +568,11 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
                         pos += 1 // skip the ">"
                         break
                     }
-                    case BIT.CLOSE_BRACKET: {
-                        currTokenType = TOKEN_TYPE.CLOSE_BRACKET
+                    case BIT.CLOSE_ANGLE_BRACKET: {
+                        currTokenType = TOKEN_TYPE.CLOSE_ANGLE_BRACKET
                         break
                     }
-                    case BIT.SLASH_CLOSE_BRACKET: {
+                    case BIT.SLASH_CLOSE_ANGLE_BRACKET: {
                         const isDoneSkipping = scoping.pop() === skippingScope
                         currScope = scoping[scoping.length - 1]
                         currTokenType = TOKEN_TYPE.CLOSE_ELEMENT
@@ -493,37 +586,29 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
                                 : TOKEN_TYPE.CONTENT
                         break
                     }
+                    case BIT.CDATA: {
+                        skipCDSect(/*inline*/)
+                        break
+                    }
                     case BIT.COMMENT: {
-                        // skipComment contents
-                        const closingBuff = [
-                            CHAR_CODE.EXCLAMATION_POINT,
-                            CHAR_CODE.HYPHEN,
-                            CHAR_CODE.HYPHEN
-                        ]
-                        while (
-                            hasNext(/*inline*/) &&
-                            (closingBuff[2] !== CHAR_CODE.CLOSE_BRACKET ||
-                                closingBuff[1] !== CHAR_CODE.HYPHEN ||
-                                closingBuff[0] !== CHAR_CODE.HYPHEN)
-                        ) {
-                            closingBuff.shift()
-                            closingBuff.push(peek(/*inline*/))
-                            pos += 1
-                        }
+                        skipComment(/*inline*/)
                         break
                     }
                     default: {
                         const start = pos
                         skipAlphaNumericAndSpecialChars()
                         if (pos === start) {
-                            throw new Error(
-                                `Unknown Syntax : "${xmlAsString[pos]}"`
+                            throws(
+                                /*inline*/ `Unknown Syntax : "${xmlAsString[pos]}"`
                             )
                         }
                         // here we fall if we have alphanumeric string, which can be related to attributes, content or nothing
-                        if (currTokenType === TOKEN_TYPE.CLOSE_BRACKET) {
+                        if (currTokenType === TOKEN_TYPE.CLOSE_ANGLE_BRACKET) {
                             currTokenType = TOKEN_TYPE.CONTENT
-                            if (peek(/*inline*/) !== CHAR_CODE.OPEN_BRACKET) {
+                            if (
+                                peek(/*inline*/) !==
+                                CHAR_CODE.OPEN_ANGLE_BRACKET
+                            ) {
                                 skipAlphaNumericAndSpecialChars()
                             }
                         } else if (
@@ -562,11 +647,18 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
                 isBlank,
                 isElementBegin,
                 isQuote,
+                peekCDEnd,
+                peekCDStart,
+                peekCommentEnd,
+                peekCommentStart,
                 skipAlphaNumericAndSpecialChars,
+                skipCDSect,
+                skipComment,
                 skipQuotes,
                 skipSpaces,
                 skipTagName,
-                skipXMLDocumentHeader
+                skipXMLDocumentHeader,
+                throws
             }
             : {})
     }

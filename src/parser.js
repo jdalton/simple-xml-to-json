@@ -35,12 +35,12 @@ const createAST = (xmlAsString, options = {}) => {
     /*
     How does the grammar look?
     | expr: StructuredXML | UnstructuredXML | Content
-    | StructuredXML: (openBracket + ElementName) + (AttributeList)* + closeBracket + (expr)* + closeElement
+    | StructuredXML: (openAngleBracket + ElementName) + (AttributeList)* + closeAngleBracket + (expr)* + closeElement
     | UnstructuredXML: Content* + expr* + Content*
     | Content: String
-    | openBracket: <
-    | closeBracket: >
-    | closeElement: </ + ElementName + closeBracket
+    | openAngleBracket: <
+    | closeAngleBracket: >
+    | closeElement: </ + ElementName + closeAngleBracket
     | ElementName: String
     | AttributeList: AttributeName + "=" + AttributeValue + AttributeList*
     | AttributeName: String
@@ -61,14 +61,14 @@ const createAST = (xmlAsString, options = {}) => {
         const { type: tokType } = tok
         const { value: nodeValue } = scopingNode[scopingNode.length - 1]
         switch (tokType) {
-            case TOKEN_TYPE.OPEN_BRACKET: {
+            case TOKEN_TYPE.OPEN_ANGLE_BRACKET: {
                 const start = lexer.pos() - 1
                 const { value: tagName } = lexer.next()
                 const attribs = []
                 let currTok = lexer.next()
                 let currType = currTok.type
                 while (
-                    currType !== TOKEN_TYPE.CLOSE_BRACKET &&
+                    currType !== TOKEN_TYPE.CLOSE_ANGLE_BRACKET &&
                     currType !== TOKEN_TYPE.CLOSE_ELEMENT &&
                     currType !== TOKEN_TYPE.EOF &&
                     lexer.hasNext()
@@ -155,7 +155,7 @@ module.exports = {
             AttribNode,
             ContentNode,
             ElementNode,
-            Node 
+            Node
         }
         : {})
 }
