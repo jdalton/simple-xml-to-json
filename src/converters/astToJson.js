@@ -1,6 +1,6 @@
 'use strict'
 
-const { QUEUE, NODE_TYPE } = require('../constants')
+const { NODE_TYPE } = require('../constants')
 
 const convertToJSON = ast => {
     const root = ast.value.children[0]
@@ -9,9 +9,8 @@ const convertToJSON = ast => {
     }
     const json = {}
     // Use a queue to avoid call stack limits.
-    const queue = Array(QUEUE.PREALLOCATE_SIZE)
-    queue[0] = [root, json, -1]
-    let queueLength = 1
+    const queue = [[root, json, -1]]
+    let { length: queueLength } = queue
     let pos = 0
     while (pos < queueLength) {
         const {

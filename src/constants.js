@@ -54,11 +54,6 @@ module.exports = {
         ELEMENT: 'ELEMENT',
         ROOT: 'ROOT'
     },
-    QUEUE: {
-        // Preallocate queues to avoid growing them.
-        // Feel free to experiment with this size.
-        PREALLOCATE_SIZE: 1000
-    },
     TOKEN_TYPE: {
         OPEN_ANGLE_BRACKET: 1,
         ELEMENT_TYPE: 2,
