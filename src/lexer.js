@@ -16,6 +16,7 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
     let peekedTagName = ''
     let peekedTokenType = 0
     let pos = 0
+    let seenRootTagName = false
     let erroredMessage
 
     const getPos = () => pos
@@ -365,6 +366,7 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
                             peekedTokenType = TOKEN_TYPE.ELEMENT_TYPE
                             peekedPos = pos
                             if (
+                                seenRootTagName &&
                                 typeof knownElement === 'function' &&
                                 !knownElement(peekedTagName)
                             ) {
@@ -377,6 +379,8 @@ function createLexer(xmlAsString, { knownAttrib, knownElement } = {}) {
                                 skippingAttrib = true
                                 scoping.push(currScope)
                                 break
+                            } else if (seenRootTagName === false) {
+                                seenRootTagName = true
                             }
                         }
                         // Restore pos after peeking so that the APIs report

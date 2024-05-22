@@ -116,12 +116,26 @@ describe('Lexer', () => {
         expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.EOF))
     })
 
+    it('should not skip root elements', () => {
+        const mockXML = `
+            <a></a>
+        `
+        const tokenizer = lexer.createLexer(mockXML, {
+            knownElement: () => false
+        })
+        expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.OPEN_ANGLE_BRACKET))
+        expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.ELEMENT_TYPE, 'a'))
+        expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.CLOSE_ANGLE_BRACKET))
+        expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.CLOSE_ELEMENT, 'a'))
+        expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.EOF))
+    })
+
     it('should skip unknown elements', () => {
         const mockXML = `
             <a><b></b><c><d>D</d><e><f>F</f>E</e>C</c></a>
         `
         const tokenizer = lexer.createLexer(mockXML, {
-            knownElement: (n) => n === 'a' || n === 'b'
+            knownElement: (n) => n === 'b'
         })
         expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.OPEN_ANGLE_BRACKET))
         expect(tokenizer.next()).toEqual(Token(TOKEN_TYPE.ELEMENT_TYPE, 'a'))
